@@ -1,0 +1,135 @@
+DNS for SunOS 4.1.X systems
+This documents provides directions necessary to enable DNS on SunOS 4.1.X systems. It was originally provided by Sun.
+
+>SRDB ID: 3886
+>
+>SYNOPSIS: Using DNS without NIS
+>
+>DETAIL DESCRIPTION:
+>
+>Want to use DNS, but not NIS
+>
+>SOLUTION SUMMARY:
+>
+>MAKING A LIBC.SO for DNS without NIS
+>
+>		     This is a procedure that can be used to add name resolver
+>		     routines into shared libc library in SunOS_4.1.
+>
+>		     First load "SHLIB CUSTOM" either from SunInstall or from
+>		     add_services.
+>
+>		     Besure to have the file /etc/resolv.conf configured 
+>		     properly. Test this with /usr/etc/nslookup.
+>
+>1. Become super user:
+>
+>	% su  (if necessary)
+>
+>2. Make a temporary directory:
+>
+>	% cd /usr/lib/shlib.etc
+>	% mkdir tmp
+>
+>3. Change to the "tmp" directory just made, extract the pic .o from 
+>   libc_pic.a and rm the file __.SYMDEF. The reason you need to do 
+>   the 2 "mv" commands is because "ar" truncated filenames over 
+>   16 characters.
+>
+>	% cd tmp
+>	% ar x ../libc_pic.a
+>	% rm __.SYMDEF
+>	% mv rpc_dtablesize. rpc_dtablesize.o
+>	% mv rpc_commondata. rpc_commondata.o
+>	% ar x /usr/lib/libresolv.a
+>
+>    The libresolv.a (apparently) contains object modules position independant,
+>    so they can be added to the libc_pic modules without fear.
+>
+>4. Remove the old routine to do the hostname/addr resolution:
+>
+>	% rm gethostent.o
+>
+>5. Remove the libresolv module that contains `strncasecmp' (which is now
+>   in the main C library, so it is redundant):
+>
+>	% rm strcasecmp.o
+>
+>6.  % cd ..
+>
+>7.  Copy lorder-sparc to lorder-sparc.orig.  Edit the file lorder-sparc and
+>    remove the reference to `gethostent.o' and add the references to the
+>    resolver library routines by applying this patch:
+>
+>	remove	:	gethostent.o
+>
+>	   add	:	gethostnamadr.o 
+>			sethostent.o 
+>			res_query.o 
+>			res_mkquery.o 
+>			res_send.o 
+>			res_debug.o 
+>			res_comp.o 
+>			res_init.o
+>
+>
+>	% diff -rc2 lorder-sparc.orig lorder-sparc
+>	*** lorder-sparc.orig   Thu Feb  8 05:27:46 1990
+>	--- lorder-sparc	Mon Apr  9 12:58:59 1990
+>	***************
+>	*** 150,154 ****
+>	  getwd.o
+>	  getnetgrent.o
+>	! gethostent.o
+>	  ypxdr.o
+>	  ttyname.o
+>	--- 150,161 ----
+>	  getwd.o
+>	  getnetgrent.o
+>	! gethostnamadr.o
+>	! sethostent.o
+>	! res_query.o
+>	! res_mkquery.o
+>	! res_send.o
+>	! res_debug.o
+>	! res_comp.o
+>	! res_init.o
+>	  ypxdr.o
+>	  ttyname.o
+>
+>
+>8. % make libc.so
+>
+>9. Now some libc.so.x.y.z built in the current directory.  It is recommended
+>   that you test out this library at this point before installing it.  Can do
+>   so by setting the environment LD_LIBRARY_PATH to the current directory, for
+>   example:
+>
+>   	% setenv LD_LIBRARY_PATH `pwd`
+>	% your_favorite_test_cmd  (ie. ping, ftp, telnet)
+>
+>   Once satisfied that the new library worked, proceed to install it with the
+>   following commands:
+>
+>	% cp libc.so.x.y.z /usr/lib
+>	% ldconfig
+>	% unsetenv LD_LIBRARY_PATH
+>
+>10. Now running with the new library.  Verify this by doing a trace command
+>    of let's say "date".
+>
+>	% trace date
+>
+>   The output should inform you that the new library is being used.
+>
+>
+>
+>BUG REPORT ID: n/a
+>PATCH ID: n/a
+>PRODUCT AREA: n/a
+>PRODUCT: DNS
+>SUNOS RELEASE: SunOS 4.1
+>UNBUNDLED RELEASE: n/a
+>HARDWARE: n/a
+
+
